@@ -2,9 +2,9 @@ spring:
   application:
     name: music-catalog-backend
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/music_catalog}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    url: ${DATABASE_URL:jdbc:postgresql://dpg-d9llu9rm8hqs7390sm90-a:5432/music_catalog_db_qdu1}
+    username: ${DATABASE_USERNAME:music_catalog_db_qdu1_user}
+    password: ${DATABASE_PASSWORD:3n5cx6ctVA6JzqRNXpWB4S5PElOblC2H}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
