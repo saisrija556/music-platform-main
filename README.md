@@ -130,3 +130,4 @@ music-catalog-insights/
 ├── docker-compose.yml
 └── README.md
 ```
+# music-platforms
