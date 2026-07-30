@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: music-catalog-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: music-catalog-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: music-catalog-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: music-catalog-db
+          property: password
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: update
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://music-catalog-frontend.onrender.com,http://localhost:3000
+      - key: SERVER_SERVLET_CONTEXT_PATH
+        value: /
+      - key: SERVER_PORT
+        value: "8080"
+      - key: APP_OPENAI_API_KEY
+        value: ""
+      - key: APP_OPENAI_MODEL
+        value: gpt-4o-mini
+
+  - type: web
+    name: music-catalog-frontend
+    runtime: node
+    buildCommand: cd frontend && npm install --include=dev && npm run build
+    startCommand: cd frontend && npm run start
+    plan: free
+    region: oregon
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://music-catalog-backend.onrender.com
+
+databases:
+  - name: music-catalog-db
+    plan: free
+    region: oregon
