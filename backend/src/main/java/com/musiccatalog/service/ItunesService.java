@@ -10,6 +10,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import com.musiccatalog.dto.response.TrackResponse;
+
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -98,4 +100,58 @@ public class ItunesService {
                 .price(node.has("collectionPrice") ? node.path("collectionPrice").asDouble() : null)
                 .build();
     }
+    public List<TrackResponse> getAlbumTracks(Long collectionId) {
+
+    String url = UriComponentsBuilder.fromHttpUrl(LOOKUP_URL)
+            .queryParam("id", collectionId)
+            .queryParam("entity", "song")
+            .build()
+            .toUriString();
+
+    try {
+
+        String body = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(String.class);
+
+        JsonNode root = objectMapper.readTree(body);
+
+        JsonNode results = root.path("results");
+
+        List<TrackResponse> tracks = new ArrayList<>();
+
+        if (results.isArray()) {
+
+            for (JsonNode node : results) {
+
+                if (!"track".equals(node.path("wrapperType").asText())) {
+                    continue;
+                }
+
+                String preview = node.path("previewUrl").asText(null);
+
+                if (preview == null || preview.isBlank()) {
+                    continue;
+                }
+
+                tracks.add(
+                        TrackResponse.builder()
+                                .trackId(node.path("trackId").asLong())
+                                .trackName(node.path("trackName").asText())
+                                .previewUrl(preview)
+                                .trackNumber(node.path("trackNumber").asInt())
+                                .build()
+                );
+            }
+        }
+
+        return tracks;
+
+    } catch (Exception e) {
+
+        throw new ItunesApiException("Unable to fetch tracks", e);
+
+    }
+}
 }
