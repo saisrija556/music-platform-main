@@ -6,6 +6,7 @@ import type {
   LibraryItem,
   PageResponse,
   RecommendationsResponse,
+  TrackResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -84,4 +85,6 @@ export const api = {
 
   getRecommendations: () =>
     request<RecommendationsResponse>("/api/insights/recommendations"),
+  getAlbumTracks: (albumId: number) =>
+    request<TrackResponse[]>(`/api/search/${albumId}/tracks`),
 };
