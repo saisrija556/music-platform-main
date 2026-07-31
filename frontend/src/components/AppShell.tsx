@@ -28,7 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-slate-100">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/search" className="text-lg font-bold tracking-tight text-white">
@@ -41,8 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                   pathname === item.href
-                    ? "bg-violet-600 text-white"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-pink-400 text-white hover:bg-pink-300 transition-colors" : "bg-white/5 text-slate-300 hover:bg-white/10"
                 }`}
               >
                 {item.label}
@@ -67,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium ${
-                pathname === item.href ? "bg-violet-600 text-white" : "bg-white/5 text-slate-300"
+                pathname === item.href ? "bg-pink-400 text-white hover:bg-pink-300 transition-colors" : "bg-white/5 text-slate-300 hover:bg-white/10"
               }`}
             >
               {item.label}
