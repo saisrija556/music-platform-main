@@ -67,3 +67,9 @@ export interface ApiError {
   message: string;
   status: number;
 }
+export interface TrackResponse {
+  trackId: number;
+  trackName: string;
+  previewUrl: string;
+  trackNumber: number;
+}
