@@ -26,17 +26,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RecommendationService {
 
-    private static final Map<String, List<String>> CURATED_BY_GENRE = Map.of(
-            "Pop", List.of("1989 Taylor Swift", "Future Nostalgia Dua Lipa", "Thriller Michael Jackson"),
-            "Rock", List.of("Abbey Road Beatles", "Nevermind Nirvana", "The Dark Side of the Moon Pink Floyd"),
-            "Hip-Hop/Rap", List.of("To Pimp a Butterfly Kendrick Lamar", "Illmatic Nas", "My Beautiful Dark Twisted Fantasy Kanye West"),
-            "R&B/Soul", List.of("Songs in A Minor Alicia Keys", "Channel Orange Frank Ocean", "What's Going On Marvin Gaye"),
-            "Alternative", List.of("OK Computer Radiohead", "In the Aeroplane Over the Sea Neutral Milk Hotel", "Funeral Arcade Fire"),
-            "Jazz", List.of("Kind of Blue Miles Davis", "A Love Supreme John Coltrane", "Time Out Dave Brubeck"),
-            "Classical", List.of("The Four Seasons Vivaldi", "Symphony No. 9 Beethoven", "Goldberg Variations Bach"),
-            "Country", List.of("Golden Hour Kacey Musgraves", "Red Taylor Swift", "No Fences Garth Brooks"),
-            "Electronic", List.of("Random Access Memories Daft Punk", "Discovery Daft Punk", "Immunity Jon Hopkins")
-    );
+   
 
     private final LibraryItemRepository libraryItemRepository;
     private final CurrentUserService currentUserService;
@@ -125,44 +115,122 @@ public class RecommendationService {
     }
 
     private RecommendationsResponse getHeuristicRecommendations(List<LibraryItem> library, Set<Long> ownedIds) {
-        String topGenre = library.stream()
-                .filter(i -> i.getGenre() != null)
-                .collect(Collectors.groupingBy(LibraryItem::getGenre, Collectors.counting()))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse("Pop");
 
-        List<String> seeds = CURATED_BY_GENRE.getOrDefault(topGenre,
-                CURATED_BY_GENRE.get("Pop"));
+    List<RecommendationsResponse.Recommendation> recommendations = new ArrayList<>();
 
-        List<RecommendationsResponse.Recommendation> recommendations = new ArrayList<>();
-        for (String seed : seeds) {
-            if (recommendations.size() >= 5) break;
-            try {
-                List<AlbumSearchResult> results = itunesService.searchAlbums(seed, 5);
-                for (AlbumSearchResult album : results) {
-                    if (ownedIds.contains(album.getAppleCatalogId())) continue;
-                    recommendations.add(RecommendationsResponse.Recommendation.builder()
-                            .title(album.getTitle())
-                            .artistName(album.getArtistName())
-                            .genre(album.getGenre())
-                            .rationale("Based on your interest in " + topGenre + " — a well-loved album in that genre.")
-                            .appleCatalogId(album.getAppleCatalogId())
-                            .artworkUrl(album.getArtworkUrl())
-                            .build());
+    Set<Long> added = new HashSet<>();
+
+    Map<String, Long> genreCount = library.stream()
+            .filter(i -> i.getGenre() != null)
+            .collect(Collectors.groupingBy(
+                    LibraryItem::getGenre,
+                    Collectors.counting()));
+
+    List<String> topGenres = genreCount.entrySet()
+            .stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(3)
+            .map(Map.Entry::getKey)
+            .toList();
+
+    Map<String, Long> artistCount = library.stream()
+            .collect(Collectors.groupingBy(
+                    LibraryItem::getArtistName,
+                    Collectors.counting()));
+
+    List<String> topArtists = artistCount.entrySet()
+            .stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(5)
+            .map(Map.Entry::getKey)
+            .toList();
+
+    // Recommend albums from favourite artists
+
+    for (String artist : topArtists) {
+
+        try {
+
+            List<AlbumSearchResult> albums =
+                    itunesService.searchAlbums(artist, 10);
+
+            for (AlbumSearchResult album : albums) {
+
+                if (ownedIds.contains(album.getAppleCatalogId()))
+                    continue;
+
+                if (!added.add(album.getAppleCatalogId()))
+                    continue;
+
+                recommendations.add(
+                        RecommendationsResponse.Recommendation.builder()
+                                .title(album.getTitle())
+                                .artistName(album.getArtistName())
+                                .genre(album.getGenre())
+                                .appleCatalogId(album.getAppleCatalogId())
+                                .artworkUrl(album.getArtworkUrl())
+                                .rationale("Because you enjoy albums by " + artist)
+                                .build()
+                );
+
+                if (recommendations.size() >= 5)
                     break;
-                }
-            } catch (Exception e) {
-                log.debug("Heuristic search failed for seed {}: {}", seed, e.getMessage());
             }
+
+        } catch (Exception ignored) {
         }
 
-        return RecommendationsResponse.builder()
-                .recommendations(recommendations)
-                .source("heuristic")
-                .build();
+        if (recommendations.size() >= 5)
+            break;
     }
+
+    // Recommend from favourite genres
+
+    if (recommendations.size() < 5) {
+
+        for (String genre : topGenres) {
+
+            try {
+
+                List<AlbumSearchResult> albums =
+                        itunesService.searchAlbums(genre, 10);
+
+                for (AlbumSearchResult album : albums) {
+
+                    if (ownedIds.contains(album.getAppleCatalogId()))
+                        continue;
+
+                    if (!added.add(album.getAppleCatalogId()))
+                        continue;
+
+                    recommendations.add(
+                            RecommendationsResponse.Recommendation.builder()
+                                    .title(album.getTitle())
+                                    .artistName(album.getArtistName())
+                                    .genre(album.getGenre())
+                                    .appleCatalogId(album.getAppleCatalogId())
+                                    .artworkUrl(album.getArtworkUrl())
+                                    .rationale("Recommended because you often listen to " + genre)
+                                    .build()
+                    );
+
+                    if (recommendations.size() >= 5)
+                        break;
+                }
+
+            } catch (Exception ignored) {
+            }
+
+            if (recommendations.size() >= 5)
+                break;
+        }
+    }
+
+    return RecommendationsResponse.builder()
+            .recommendations(recommendations)
+            .source("heuristic-smart")
+            .build();
+}
 
     private String buildPrompt(List<LibraryItem> library) {
         Map<String, Long> genres = library.stream()
@@ -185,16 +253,42 @@ public class RecommendationService {
                 .toList();
 
         return String.format("""
-                The user already owns these albums (do NOT recommend any of these):
-                %s
+The user owns these albums:
 
-                Their library profile:
-                - Top genres: %s
-                - Artists they collect: %s
-                - Release eras: %s
+%s
 
-                Recommend 3-5 albums they do NOT already own. Return JSON array only.
-                """, titles, genres, artists, years);
+Favourite genres:
+
+%s
+
+Favourite artists:
+
+%s
+
+Favourite release years:
+
+%s
+
+Recommend five albums that are NOT already owned.
+
+Prefer:
+- same artists
+- similar artists
+- same genres
+- similar release era
+
+Each recommendation must include:
+title,
+artistName,
+genre,
+rationale.
+
+Return ONLY a JSON array.
+""",
+titles,
+genres,
+artists,
+years);
     }
 
     private RecommendationsResponse.Recommendation enrichWithItunes(Map<String, String> item, Set<Long> ownedIds) {
